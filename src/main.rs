@@ -10,6 +10,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::Duration;
 
 static USERAGENT: &str = "Mozilla/5.0 (Windows NT 10.0; rv:108.0) Gecko/20100101 Firefox/108.0";
 // The site returns an empty string unless you have this header
@@ -50,6 +51,21 @@ async fn get_links_from_page<'a>(
     Ok(ret)
 }
 
+async fn get_kaos_from_page<'a>(
+    selector: &Selector,
+    frag: &'a Html,
+) -> Result<Vec<&'a str>, Box<dyn Error>> {
+    let mut ret: Vec<&'a str> = Vec::new();
+    for link_element in frag.select(&selector) {
+        let link = link_element
+            .value()
+            .attr("href")
+            .ok_or("Could not extract link value from href!")?;
+        ret.push(link.clone());
+    }
+    Ok(ret)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut headers = reqwest::header::HeaderMap::new();
@@ -71,33 +87,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let selector_mainpage =
         Selector::parse("#kaomojiSections .kaomojiSection .kaomojiSectionSeeAll a[href]")?;
     let selector_catpage = Selector::parse("ul.kaomojiKitListDefaultView a[href]")?;
+    let selector_kaos = Selector::parse("#kaomojiList li")?;
     for link in get_links_from_page(&selector_mainpage, &frag).await? {
-        let url_cat = url.join(link)?;
-        let body_cat: String = get_page(&url_cat, &client).await?;
-        let frag_cat = Html::parse_document(&body_cat);
-        for kit_link in get_links_from_page(&selector_catpage, &frag_cat).await? {
-            println!("{}", kit_link);
+        let url_category = url.join(link)?;
+        let body_category: String = get_page(&url_category, &client).await?;
+        let frag_category = Html::parse_document(&body_category);
+        for kit_link in get_links_from_page(&selector_catpage, &frag_category).await? {
+            let url_kit = url.join(kit_link)?;
+            let body_kit = get_page(&url_kit, &client).await?;
+            let frag_kit = Html::parse_document(&body_kit);
+            //for kao in get_kao_from_page(&selector_kaos, &frag_kit) {}
+            std::thread::sleep(Duration::from_secs_f32(2.))
         }
     }
-    // let fragment = Html::parse_document(&body);
-    // //println!("{:#?}", body);
-    // let kaomoji_selector = Selector::parse("#kaomojiList").unwrap();
-    // for li in fragment.select(&kaomoji_selector) {
-    //     let text = li.text().collect::<Vec<_>>();
-    //     println!("{:#?}", text);
-    // }
-    // let mut kaomoji_vec = Vec::new();
-    //
-    // for kaomoji in fragment.select(&kaomoji_selector) {
-    //     kaomoji_vec.push(kaomoji.text().collect::<Vec<_>>()[0].to_string());
-    // }
-    //
-    // let mut file = File::create("kaomoji.txt")?;
-    //
-    // for kaomoji in kaomoji_vec {
-    //     file.write_all(kaomoji.as_bytes())?;
-    //     file.write_all(b"\n")?;
-    // }
+    //$("#kaomojiList li")
 
     Ok(())
 }
