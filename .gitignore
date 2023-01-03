@@ -1,2 +1,4 @@
 /target
 .scraper-cache
+.page_cache
+.*_cache

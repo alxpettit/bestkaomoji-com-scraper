@@ -1,16 +1,37 @@
 extern crate reqwest;
 extern crate scraper;
 
-use reqwest::Client;
+use md5;
+use reqwest::{Client, Url};
 use scraper::{Html, Selector};
+use std::error::Error;
+use std::fs;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write};
+use std::path::PathBuf;
+use std::str::FromStr;
 
 static USERAGENT: &str = "Mozilla/5.0 (Windows NT 10.0; rv:108.0) Gecko/20100101 Firefox/108.0";
 // The site returns an empty string unless you have this header
 // this is why it worked on `wget` but not `curl`, as well.
 static ACCEPT_LANGUAGE: &str = "en-CA,en-US;q=0.7,en;q=0.3";
 
+async fn get_page(url: &Url, client: &Client) -> Result<String, Box<dyn Error>> {
+    let mut cache_path = PathBuf::from(".").join(".page_cache");
+    fs::create_dir_all(&cache_path)?;
+    let hash = md5::compute(url.as_str());
+    cache_path = cache_path.join(format!("{:?}", hash));
+    cache_path.set_extension("html");
+    if cache_path.exists() {
+        let mut ret = String::new();
+        File::open(cache_path)?.read_to_string(&mut ret)?;
+        return Ok(ret);
+    }
+    let res = client.get(url.clone()).send().await?;
+    let body = res.text().await?;
+    File::create(cache_path)?.write_all(body.as_bytes())?;
+    Ok(body)
+}
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut headers = reqwest::header::HeaderMap::new();
@@ -24,12 +45,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::ClientBuilder::new()
         .default_headers(headers)
         .build()?;
-
-    let mut res = client
-        .get("https://bestkaomoji.com/grinning-face/")
-        .send()
-        .await?;
-    let body = res.text().await?;
+    let url =
+        Url::from_str("https://bestkaomoji.com/grinning-face/").expect("couldn't convert URL");
+    let body: String = get_page(&url, &client).await.expect("Could not get page");
     let fragment = Html::parse_document(&body);
     //println!("{:#?}", body);
     let kaomoji_selector = Selector::parse("#kaomojiList").unwrap();
