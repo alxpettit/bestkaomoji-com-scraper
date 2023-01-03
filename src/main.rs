@@ -35,10 +35,8 @@ async fn get_page(url: &Url, client: &Client) -> Result<String, Box<dyn Error>> 
     Ok(body)
 }
 
-async fn get_links_from_main_page<'a>(
-    frag: &'a Html,
-) -> Result<Vec<ElementRef<'a>>, Box<dyn Error>> {
-    let mut ret: Vec<ElementRef> = Vec::new();
+async fn get_links_from_main_page<'a>(frag: &'a Html) -> Result<Vec<&str>, Box<dyn Error>> {
+    let mut ret: Vec<&str> = Vec::new();
     let link_selector =
         &Selector::parse("#kaomojiSections .kaomojiSection .kaomojiSectionSeeAll a[href]")?;
     for link_element in frag.select(link_selector) {
@@ -46,7 +44,7 @@ async fn get_links_from_main_page<'a>(
             .value()
             .attr("href")
             .ok_or("Could not extract link value from href!")?;
-        println!("{:#?}", link);
+        ret.push(link);
     }
     Ok(ret)
 }
@@ -66,17 +64,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
     let url = Url::from_str("https://bestkaomoji.com/").expect("couldn't convert URL");
 
-    let body: String = get_page(&url, &client).await.expect("Could not get page");
+    let body: String = get_page(&url, &client).await?;
 
     let frag = Html::parse_document(&body);
-    match get_links_from_main_page(&frag).await {
-        Ok(vec_element) => {
-            println!("Ok");
-            println!("{:#?}", vec_element);
-        }
-        Err(e) => {
-            println!("D:");
-        }
+    for link in get_links_from_main_page(&frag).await? {
+        let url_page = url.join(link)?;
+        let body: String = get_page(&url_page, &client).await?;
     }
     // let fragment = Html::parse_document(&body);
     // //println!("{:#?}", body);
