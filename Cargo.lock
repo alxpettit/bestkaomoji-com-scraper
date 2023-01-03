@@ -18,8 +18,10 @@ checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 name = "bestkaomoji-com-scraper"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "linya",
  "md5",
+ "rand 0.8.5",
  "rayon",
  "reqwest",
  "scraper",
