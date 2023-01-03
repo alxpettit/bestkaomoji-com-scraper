@@ -17,21 +17,24 @@ static USERAGENT: &str = "Mozilla/5.0 (Windows NT 10.0; rv:108.0) Gecko/20100101
 static ACCEPT_LANGUAGE: &str = "en-CA,en-US;q=0.7,en;q=0.3";
 
 async fn get_page(url: &Url, client: &Client) -> Result<String, Box<dyn Error>> {
-    let mut cache_path = PathBuf::from(".").join(".page_cache");
+    let cache_path = PathBuf::from(".").join(".page_cache");
     fs::create_dir_all(&cache_path)?;
     let hash = md5::compute(url.as_str());
-    cache_path = cache_path.join(format!("{:?}", hash));
-    cache_path.set_extension("html");
-    if cache_path.exists() {
-        let mut ret = String::new();
-        File::open(cache_path)?.read_to_string(&mut ret)?;
-        return Ok(ret);
+    let mut cache_file = cache_path.join(format!("{:?}", hash));
+    cache_file.set_extension("html");
+
+    if cache_file.exists() {
+        let mut body = String::new();
+        File::open(cache_file)?.read_to_string(&mut body)?;
+        return Ok(body);
     }
+
     let res = client.get(url.clone()).send().await?;
     let body = res.text().await?;
-    File::create(cache_path)?.write_all(body.as_bytes())?;
+    File::create(cache_file)?.write_all(body.as_bytes())?;
     Ok(body)
 }
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut headers = reqwest::header::HeaderMap::new();
