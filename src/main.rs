@@ -1,9 +1,7 @@
 extern crate reqwest;
 extern crate scraper;
 
-use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache};
 use reqwest::Client;
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use scraper::{Html, Selector};
 use std::fs::File;
 use std::io::Write;
@@ -23,16 +21,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ACCEPT_LANGUAGE.parse().unwrap(),
     );
 
-    let reqwest_client = reqwest::ClientBuilder::new()
+    let client = reqwest::ClientBuilder::new()
         .default_headers(headers)
         .build()?;
-    let client = ClientBuilder::new(reqwest_client)
-        .with(Cache(HttpCache {
-            mode: CacheMode::OnlyIfCached,
-            manager: CACacheManager::default(),
-            options: None,
-        }))
-        .build();
 
     let mut res = client
         .get("https://bestkaomoji.com/grinning-face/")

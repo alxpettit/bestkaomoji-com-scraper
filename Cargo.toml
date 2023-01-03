@@ -6,8 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-http-cache-reqwest = "0.5.2"
 reqwest = "0.11.13"
-reqwest-middleware = "0.2.0"
 scraper = "0.14.0"
 tokio = { version = "1.23.0", features = ["full"] }
